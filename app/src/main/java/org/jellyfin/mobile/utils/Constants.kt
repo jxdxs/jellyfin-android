@@ -41,6 +41,7 @@ object Constants {
     const val PREF_EXOPLAYER_ALLOW_HORIZONTAL_GESTURE = "pref_exoplayer_allow_horizontal_gesture"
     const val PREF_EXOPLAYER_DIRECT_PLAY_ASS = "pref_exoplayer_direct_play_ass"
     const val PREF_EXOPLAYER_NETWORK_BUFFER = "pref_exoplayer_network_buffer"
+    const val PREF_EXOPLAYER_SEEK_INTERVAL = "pref_exoplayer_seek_interval"
     const val NETWORK_BUFFER_AUTO = "auto"
     const val NETWORK_BUFFER_LARGE = "large"
     const val NETWORK_BUFFER_EXTRA_LARGE = "extra_large"
@@ -121,6 +122,10 @@ object Constants {
     const val DISPLAY_PREFERENCES_SKIP_BACK_LENGTH = "skipBackLength"
     const val DISPLAY_PREFERENCES_SKIP_FORWARD_LENGTH = "skipForwardLength"
     const val DEFAULT_SEEK_TIME_MS = 10000L
+    const val SEEK_INTERVAL_5S = 5000L
+    const val SEEK_INTERVAL_10S = 10000L
+    const val SEEK_INTERVAL_20S = 20000L
+    const val SEEK_INTERVAL_30S = 30000L
     const val MAX_SKIP_TO_PREV_MS = 3000L
     const val DOUBLE_TAP_RIPPLE_DURATION_MS = 100L
     const val FULL_SWIPE_RANGE_SCREEN_RATIO = 0.66f

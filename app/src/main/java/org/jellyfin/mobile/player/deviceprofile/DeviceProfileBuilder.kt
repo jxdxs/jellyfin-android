@@ -245,7 +245,7 @@ class DeviceProfileBuilder(
          * IMPORTANT: Don't change without updating [AVAILABLE_VIDEO_CODECS] and [AVAILABLE_AUDIO_CODECS]
          */
         private val SUPPORTED_CONTAINER_FORMATS = arrayOf(
-            "mp4", "fmp4", "webm", "mkv", "mp3", "ogg", "wav", "mpegts", "flv", "aac", "flac", "3gp",
+            "mp4", "fmp4", "webm", "mkv", "mp3", "ogg", "wav", "mpegts", "flv", "aac", "flac", "3gp", "mov",
         )
 
         /**
@@ -277,6 +277,8 @@ class DeviceProfileBuilder(
             emptyArray(),
             // 3gp
             arrayOf("h263", "mpeg4", "h264", "hevc"),
+            // mov (same as mp4)
+            arrayOf("mpeg1video", "mpeg2video", "h263", "mpeg4", "h264", "hevc", "av1", "vp9"),
         )
 
         /**
@@ -322,6 +324,8 @@ class DeviceProfileBuilder(
             arrayOf("flac"),
             // 3gp
             arrayOf("3gpp", "aac", "flac"),
+            // mov (same as mp4)
+            arrayOf("mp1", "mp2", "mp3", "aac", "alac", "ac3", "opus"),
         )
 
         /**

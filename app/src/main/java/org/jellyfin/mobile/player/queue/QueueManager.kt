@@ -356,7 +356,18 @@ class QueueManager(
                             deviceId = apiClient.deviceInfo.id,
                         )
 
-                        url to null
+                        // 服务器返回的 Content-Type 可能是 video/quicktime（mov）等
+                        // media3 默认不认 video/quicktime，显式指定为 video/mp4 让 ExoPlayer 用 MP4 extractor
+                        val container = sourceInfo.container?.lowercase()
+                        val mimeType = when (container) {
+                            "mp4", "mov" -> MimeTypes.VIDEO_MP4
+                            "mkv", "webm" -> MimeTypes.VIDEO_WEBM
+                            "ts", "mpegts" -> MimeTypes.VIDEO_MP2T
+                            "flv" -> MimeTypes.VIDEO_FLV
+                            "3gp" -> "video/3gpp"
+                            else -> null
+                        }
+                        url to mimeType
                     }
                     MediaProtocol.HTTP -> {
                         val url = requireNotNull(sourceInfo.path)
@@ -376,7 +387,15 @@ class QueueManager(
                     deviceId = apiClient.deviceInfo.id,
                 )
 
-                url to null
+                val mimeType = when (container.lowercase()) {
+                    "mp4", "mov" -> MimeTypes.VIDEO_MP4
+                    "mkv", "webm" -> MimeTypes.VIDEO_WEBM
+                    "ts", "mpegts" -> MimeTypes.VIDEO_MP2T
+                    "flv" -> MimeTypes.VIDEO_FLV
+                    "3gp" -> "video/3gpp"
+                    else -> null
+                }
+                url to mimeType
             }
             PlayMethod.TRANSCODE -> {
                 val transcodingPath = requireNotNull(sourceInfo.transcodingUrl) { "Missing transcode URL" }

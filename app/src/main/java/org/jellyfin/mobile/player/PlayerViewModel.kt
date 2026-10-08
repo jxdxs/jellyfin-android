@@ -568,11 +568,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun rewind() {
-        playerOrNull?.seekToOffset(displayPreferences.skipBackLength.unaryMinus())
+        val interval = appPreferences.exoPlayerSeekIntervalMs
+        playerOrNull?.seekToOffset(-interval)
     }
 
     fun fastForward() {
-        playerOrNull?.seekToOffset(displayPreferences.skipForwardLength)
+        val interval = appPreferences.exoPlayerSeekIntervalMs
+        playerOrNull?.seekToOffset(interval)
     }
 
     fun seekByOffset(offsetMs: Long) {

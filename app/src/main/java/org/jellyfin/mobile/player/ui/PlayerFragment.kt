@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.OrientationEventListener
 import android.view.View
 import android.view.ViewGroup
@@ -71,6 +72,11 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
     private val playerControlsView: View get() = playerControlsBinding.root
     private val toolbar: Toolbar get() = playerControlsBinding.toolbar
     private val fullscreenSwitcher: ImageButton get() = playerControlsBinding.fullscreenSwitcher
+    private val rewindButton: ImageButton get() = playerControlsBinding.rewindButton
+    private val fastForwardButton: ImageButton get() = playerControlsBinding.fastForwardButton
+    private val moreButton: ImageButton get() = playerControlsBinding.moreButton
+    private val rotateButton: ImageButton get() = playerControlsBinding.rotateButton
+    private val extraControlsContainer: View get() = playerControlsBinding.extraControlsContainer
     private var playerMenus: PlayerMenus? = null
 
     private lateinit var playerFullscreenHelper: PlayerFullscreenHelper
@@ -214,6 +220,30 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
         playerLockScreenHelper = PlayerLockScreenHelper(this, playerBinding, orientationListener)
         playerGestureHelper = PlayerGestureHelper(this, playerBinding, playerLockScreenHelper)
 
+        // Handle rewind and fast forward buttons
+        rewindButton.setOnClickListener { onRewind() }
+        fastForwardButton.setOnClickListener { onFastForward() }
+
+        // Toggle the extra controls panel (audio, subtitles, speed, quality, decoder, info)
+        moreButton.setOnClickListener { toggleExtraControls() }
+
+        // Manually switch between portrait and landscape
+        rotateButton.setOnClickListener { toggleOrientation() }
+
+        // Hide the seek buttons when the bottom control bar is too narrow to fit them,
+        // otherwise they would overlap the buttons on the left
+        playerControlsView.addOnLayoutChangeListener { _, left, _, right, _, _, _, _, _ ->
+            updateSeekButtonsVisibility(right - left)
+        }
+
+        // Keep the control bar visible while the user is interacting with it
+        setupAutoHideRearm(playerControlsView)
+
+        // Close the extra controls panel together with the control bar
+        playerView.setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { visibility ->
+            if (visibility != View.VISIBLE) extraControlsContainer.isVisible = false
+        })
+
         // Handle fullscreen switcher
         fullscreenSwitcher.setOnClickListener {
             toggleFullscreen()
@@ -291,6 +321,89 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
 
     fun isLandscape(configuration: Configuration = resources.configuration) =
         configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    /**
+     * Re-arm the control bar auto-hide timer on every touch inside the controls.
+     *
+     * media3's [androidx.media3.ui.PlayerControlView] does not reset its auto-hide timer when a
+     * child button is tapped, so the bar disappears after the timeout even while the user keeps
+     * interacting with it. Attach a touch listener to the controls and all of their children
+     * (touches on a clickable child never reach the parent's listener) and restart the timer.
+     *
+     * The listener returns false so it never consumes the event; clicks keeps working normally.
+     */
+    private fun setupAutoHideRearm(view: View) {
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                setupAutoHideRearm(view.getChildAt(index))
+            }
+        }
+        view.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) rearmControllerAutoHide()
+            false
+        }
+    }
+
+    private fun rearmControllerAutoHide() {
+        // A non-positive timeout means auto-hide is intentionally disabled
+        // (suppressControllerAutoHide(true), e.g. while a popup menu is open) — leave it alone.
+        if (playerView.controllerShowTimeoutMs <= 0) return
+        // Assigning the timeout makes media3 reset its internal hide callback
+        playerView.controllerShowTimeoutMs = DEFAULT_CONTROLS_TIMEOUT_MS
+    }
+
+    /**
+     * Manually switch between portrait and landscape orientation.
+     *
+     * Unlike [toggleFullscreen] this always rotates, regardless of the current video's aspect
+     * ratio, so it works as an explicit orientation switch. Uses the sensor-based landscape
+     * value so the device sensor still decides which landscape direction to use.
+     */
+    private fun toggleOrientation() {
+        val current = resources.configuration.orientation
+        requireActivity().requestedOrientation = when (current) {
+            Configuration.ORIENTATION_PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            else -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+
+    /**
+     * Toggle the extra controls panel that holds the buttons moved out of the bottom bar.
+     *
+     * The panel sits above the bottom bar so the seek buttons can stay visible on narrow
+     * (portrait) screens where the full row of buttons would not fit.
+     */
+    private fun toggleExtraControls() {
+        extraControlsContainer.isVisible = !extraControlsContainer.isVisible
+        // Keep the controls on screen while the panel is open
+        rearmControllerAutoHide()
+    }
+
+    /**
+     * Show the rewind/fast-forward buttons only when the bottom control bar is wide enough
+     * to fit them next to the buttons on the left.
+     *
+     * The bottom bar now holds only the lock and "more" buttons on the left plus the fullscreen
+     * switcher on the right, so the seek buttons fit on virtually every screen.
+     */
+    private fun updateSeekButtonsVisibility(availableWidth: Int) {
+        if (availableWidth <= 0) return
+
+        val buttonSize = resources.getDimension(R.dimen.exo_bottom_controls_size)
+        val margin = resources.getDimension(R.dimen.exo_bottom_controls_margin)
+        val gap = resources.getDimension(R.dimen.exo_seek_controls_gap)
+
+        // Left chain measured from the left edge: outer margin + lock + more
+        val leftChainWidth = margin + 2 * buttonSize
+        // Right chain measured from the right edge:
+        // outer margin + fullscreen + gap + fast-forward + gap + rewind
+        val rightChainWidth = margin + buttonSize + gap + buttonSize + gap + buttonSize
+
+        // Require the two chains not to touch, keeping one extra margin as breathing room
+        val hasRoom = availableWidth >= leftChainWidth + rightChainWidth + margin
+        rewindButton.isVisible = hasRoom
+        fastForwardButton.isVisible = hasRoom
+    }
 
     fun onRewind() = viewModel.rewind()
 

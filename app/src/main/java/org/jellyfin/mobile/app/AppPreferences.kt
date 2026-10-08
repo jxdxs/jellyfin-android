@@ -128,6 +128,10 @@ class AppPreferences(context: Context) {
     val exoPlayerNetworkBuffer: String
         get() = sharedPreferences.getString(Constants.PREF_EXOPLAYER_NETWORK_BUFFER, Constants.NETWORK_BUFFER_AUTO)!!
 
+    val exoPlayerSeekIntervalMs: Long
+        get() = sharedPreferences.getString(Constants.PREF_EXOPLAYER_SEEK_INTERVAL, Constants.SEEK_INTERVAL_10S.toString())!!.toLongOrNull()
+            ?: Constants.SEEK_INTERVAL_10S
+
     @ExternalPlayerPackage
     var externalPlayerApp: String
         get() = sharedPreferences.getString(Constants.PREF_EXTERNAL_PLAYER_APP, ExternalPlayerPackage.SYSTEM_DEFAULT)!!

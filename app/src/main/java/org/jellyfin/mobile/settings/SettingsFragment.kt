@@ -61,6 +61,7 @@ class SettingsFragment : Fragment(), BackPressInterceptor {
     private lateinit var horizontalGesturePreference: Preference
     private lateinit var directPlayAssPreference: Preference
     private lateinit var networkBufferPreference: Preference
+    private lateinit var seekIntervalPreference: Preference
     private lateinit var externalPlayerChoicePreference: Preference
     private lateinit var downloadLocationPreference: Preference
 
@@ -129,6 +130,7 @@ class SettingsFragment : Fragment(), BackPressInterceptor {
                 horizontalGesturePreference.enabled = selection == VideoPlayerType.EXO_PLAYER
                 directPlayAssPreference.enabled = selection == VideoPlayerType.EXO_PLAYER
                 networkBufferPreference.enabled = selection == VideoPlayerType.EXO_PLAYER
+                seekIntervalPreference.enabled = selection == VideoPlayerType.EXO_PLAYER
                 externalPlayerChoicePreference.enabled = selection == VideoPlayerType.EXTERNAL_PLAYER
             }
         }
@@ -193,6 +195,18 @@ class SettingsFragment : Fragment(), BackPressInterceptor {
         networkBufferPreference = singleChoice(Constants.PREF_EXOPLAYER_NETWORK_BUFFER, networkBufferOptions) {
             titleRes = R.string.pref_exoplayer_network_buffer
             initialSelection = Constants.NETWORK_BUFFER_AUTO
+            enabled = appPreferences.videoPlayerType == VideoPlayerType.EXO_PLAYER
+        }
+
+        val seekIntervalOptions = listOf(
+            SelectionItem(Constants.SEEK_INTERVAL_5S.toString(), R.string.seek_interval_5s, 0),
+            SelectionItem(Constants.SEEK_INTERVAL_10S.toString(), R.string.seek_interval_10s, 0),
+            SelectionItem(Constants.SEEK_INTERVAL_20S.toString(), R.string.seek_interval_20s, 0),
+            SelectionItem(Constants.SEEK_INTERVAL_30S.toString(), R.string.seek_interval_30s, 0),
+        )
+        seekIntervalPreference = singleChoice(Constants.PREF_EXOPLAYER_SEEK_INTERVAL, seekIntervalOptions) {
+            titleRes = R.string.pref_exoplayer_seek_interval
+            initialSelection = Constants.SEEK_INTERVAL_10S.toString()
             enabled = appPreferences.videoPlayerType == VideoPlayerType.EXO_PLAYER
         }
 

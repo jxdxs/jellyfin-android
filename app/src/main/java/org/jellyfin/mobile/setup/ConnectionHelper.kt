@@ -32,6 +32,7 @@ class ConnectionHelper(
         // GOOD are kept if there's no GREAT one.
         val badServers = mutableListOf<RecommendedServerInfo>()
         val goodServers = mutableListOf<RecommendedServerInfo>()
+        val okServers = mutableListOf<RecommendedServerInfo>()
         val greatServer = withContext(Dispatchers.IO) {
             jellyfin.discovery.getRecommendedServers(candidates)
         }.firstOrNull { recommendedServer ->
@@ -41,7 +42,10 @@ class ConnectionHelper(
                     goodServers += recommendedServer
                     false
                 }
-                RecommendedServerInfoScore.OK,
+                RecommendedServerInfoScore.OK -> {
+                    okServers += recommendedServer
+                    false
+                }
                 RecommendedServerInfoScore.BAD,
                 -> {
                     badServers += recommendedServer
@@ -50,11 +54,19 @@ class ConnectionHelper(
             }
         }
 
-        val server = greatServer ?: goodServers.firstOrNull()
+        // 宽容模式：GREAT > GOOD > OK(版本旧但能连) > BAD 里能拿到 systemInfo 的
+        // 这样飞牛NAS等魔改/旧版 Jellyfin 也能连上，不被版本检查挡住
+        val server = greatServer
+            ?: goodServers.firstOrNull()
+            ?: okServers.firstOrNull()
+            ?: badServers.firstOrNull { it.systemInfo.getOrNull() != null }
+
         if (server != null) {
             val systemInfo = requireNotNull(server.systemInfo)
-            val serverVersion = systemInfo.getOrNull()?.version
-            Timber.i("Found valid server at ${server.address} with rating ${server.score} and version $serverVersion")
+            val info = systemInfo.getOrNull()
+            val serverVersion = info?.version
+            val productName = info?.productName
+            Timber.i("Found valid server at ${server.address} with rating ${server.score} and version $serverVersion (productName=$productName)")
             return CheckUrlState.Success(server.address)
         }
 
