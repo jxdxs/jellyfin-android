@@ -1,0 +1,85 @@
+name: Personal Build
+
+# Builds a signed APK of this customized fork.
+#
+# Trigger manually from the Actions tab, or automatically on every push to the
+# personal-build branch. The resulting APK is uploaded as a workflow artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name for the built APK (e.g. 2.7.3-relaxed)"
+        required: false
+        default: "2.7.3-personal"
+  push:
+    branches:
+      - personal-build
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build signed APK
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 is not set. See README for setup."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore.jks"
+          echo "Keystore decoded ($(stat -c%s "$RUNNER_TEMP/keystore.jks") bytes)"
+
+      - name: Build signed release and debug APKs
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          JELLYFIN_VERSION: ${{ github.event.inputs.version || '2.7.3-personal' }}
+        run: |
+          ./gradlew assembleLibreRelease assembleLibreDebug --stacktrace
+
+      - name: Collect APKs
+        run: |
+          mkdir -p build/personal-output
+          find app/build/outputs/apk -name "*.apk" -exec cp {} build/personal-output/ \;
+          ls -lh build/personal-output/
+
+      - name: Verify signature
+        run: |
+          APK=$(find build/personal-output -name "*-release.apk" | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::No release APK found"
+            exit 1
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK"
+          echo "=== SHA-256 ==="
+          sha256sum build/personal-output/*.apk
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-android-personal
+          retention-days: 30
+          if-no-files-found: error
+          path: build/personal-output/*.apk
