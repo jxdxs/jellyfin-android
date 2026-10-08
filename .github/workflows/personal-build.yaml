@@ -21,7 +21,7 @@ on:
       - personal-build
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -114,9 +114,10 @@ jobs:
             -exec cp {} build/personal-output/ \; 2>/dev/null || true
           ls -lh build/personal-output/ || true
           echo "=== SHA-256 ==="
-          sha256sum build/personal-output/*.apk 2>/dev/null || true
+          sha256sum build/personal-output/*.apk 2>/dev/null | tee build/personal-output/SHA256SUMS.txt || true
 
-      - name: Upload APKs
+      # Artifact: visible only under this specific run, requires being logged in.
+      - name: Upload APKs as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -124,3 +125,44 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
           path: build/personal-output/*.apk
+
+      # Release: appears on the repository's Releases page for easy download.
+      - name: Publish release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.event.inputs.version || '2.7.3-personal' }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          REPO="${{ github.repository }}"
+
+          # Recreate on every run so the same version can be rebuilt
+          gh release delete "$TAG" --repo "$REPO" --yes --cleanup-tag 2>/dev/null || true
+
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --title "Jellyfin Android ${VERSION}" \
+            --notes "自定义版 Jellyfin Android（基于官方 v2.7.3）。
+
+          ## 下载
+          - \`jellyfin-android-*-libre-release.apk\` —— **装这个**（已签名，8.6 MB）
+          - \`jellyfin-android-*-libre-debug.apk\` —— debug 版，带日志（33 MB）
+          - \`SHA256SUMS.txt\` —— 校验值
+
+          ## 改动内容
+          - 连接：接受版本较旧/被改名的服务器（如飞牛 NAS 的 Jellyfin 10.8.12）
+          - 播放：声明 mov 容器并显式指定 MIME 类型，修复 .mov 黑屏
+          - 界面：快进/快退按钮（可设 5/10/20/30 秒），次要按钮收进\"更多\"面板
+          - 界面：工具栏手动旋转按钮；控制栏操作时不再自动消失
+
+          ## 安装
+          与本地构建使用同一签名，可直接覆盖安装。
+          SHA-256: \`53b3f5149855e25da144153345b66835f0889562553c81adbaeeb354233862b8\`
+
+          > 构建自 ${REPO} 的 \`personal-build\` 分支" \
+            build/personal-output/*.apk build/personal-output/SHA256SUMS.txt
+
+          echo "Release published:"
+          gh release view "$TAG" --repo "$REPO" --json url,assets \
+            --jq '.url, (.assets[] | "  \(.name)  \(.size) bytes")'
