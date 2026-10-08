@@ -383,7 +383,7 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
      * Show the rewind/fast-forward buttons only when the bottom control bar is wide enough
      * to fit them next to the buttons on the left.
      *
-     * The bottom bar now holds only the lock and "more" buttons on the left plus the fullscreen
+     * The bottom bar holds the lock, "more" and speed buttons on the left plus the fullscreen
      * switcher on the right, so the seek buttons fit on virtually every screen.
      */
     private fun updateSeekButtonsVisibility(availableWidth: Int) {
@@ -393,8 +393,8 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
         val margin = resources.getDimension(R.dimen.exo_bottom_controls_margin)
         val gap = resources.getDimension(R.dimen.exo_seek_controls_gap)
 
-        // Left chain measured from the left edge: outer margin + lock + more
-        val leftChainWidth = margin + 2 * buttonSize
+        // Left chain measured from the left edge: outer margin + lock + more + speed
+        val leftChainWidth = margin + 3 * buttonSize
         // Right chain measured from the right edge:
         // outer margin + fullscreen + gap + fast-forward + gap + rewind
         val rightChainWidth = margin + buttonSize + gap + buttonSize + gap + buttonSize

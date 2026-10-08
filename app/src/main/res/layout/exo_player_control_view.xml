@@ -166,7 +166,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="top"
-        app:constraint_referenced_ids="lock_screen_button,more_button,fullscreen_switcher,rewind_button,fast_forward_button" />
+        app:constraint_referenced_ids="lock_screen_button,more_button,speed_button,fullscreen_switcher,rewind_button,fast_forward_button" />
 
     <LinearLayout
         android:id="@+id/extra_controls_container"
@@ -199,14 +199,6 @@
             android:background="@drawable/ripple_background_circular"
             android:padding="@dimen/exo_bottom_controls_padding"
             android:src="@drawable/ic_subtitles_stateful_24dp" />
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/speed_button"
-            android:layout_width="@dimen/exo_bottom_controls_size"
-            android:layout_height="@dimen/exo_bottom_controls_size"
-            android:background="@drawable/ripple_background_circular"
-            android:padding="@dimen/exo_bottom_controls_padding"
-            android:src="@drawable/ic_slow_motion_video_white_24dp" />
 
         <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/quality_button"
@@ -255,6 +247,17 @@
         android:src="@drawable/ic_more_vert_white_24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@id/lock_screen_button" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/speed_button"
+        android:layout_width="@dimen/exo_bottom_controls_size"
+        android:layout_height="@dimen/exo_bottom_controls_size"
+        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
+        android:background="@drawable/ripple_background_circular"
+        android:padding="@dimen/exo_bottom_controls_padding"
+        android:src="@drawable/ic_slow_motion_video_white_24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/more_button" />
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/rewind_button"
