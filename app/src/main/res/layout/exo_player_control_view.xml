@@ -31,76 +31,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/previous_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/exo_center_controls_distance"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_center_icon_padding"
-        android:src="@drawable/ic_skip_previous_black_32dp"
-        android:tint="?android:textColorPrimary"
-        app:layout_constraintBottom_toBottomOf="@id/play_pause_container"
-        app:layout_constraintEnd_toStartOf="@id/previous_chapter_button"
-        app:layout_constraintTop_toTopOf="@id/play_pause_container" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/previous_chapter_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/exo_center_controls_distance"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_center_icon_padding"
-        android:src="@drawable/ic_skip_previous_chapter_black_32dp"
-        android:tint="?android:textColorPrimary"
-        app:layout_constraintBottom_toBottomOf="@id/play_pause_container"
-        app:layout_constraintEnd_toStartOf="@id/play_pause_container"
-        app:layout_constraintTop_toTopOf="@id/play_pause_container" />
-
-    <FrameLayout
-        android:id="@+id/play_pause_container"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/exo_play_pause"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/ripple_background_circular"
-            android:padding="@dimen/exo_center_icon_padding"
-            android:tint="?android:textColorPrimary" />
-    </FrameLayout>
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/next_chapter_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/exo_center_controls_distance"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_center_icon_padding"
-        android:src="@drawable/ic_skip_next_chapter_black_32dp"
-        android:tint="?android:textColorPrimary"
-        app:layout_constraintBottom_toBottomOf="@id/play_pause_container"
-        app:layout_constraintStart_toEndOf="@id/play_pause_container"
-        app:layout_constraintTop_toTopOf="@id/play_pause_container" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/next_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/exo_center_controls_distance"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_center_icon_padding"
-        android:src="@drawable/ic_skip_next_black_32dp"
-        android:tint="?android:textColorPrimary"
-        app:layout_constraintBottom_toBottomOf="@id/play_pause_container"
-        app:layout_constraintStart_toEndOf="@id/next_chapter_button"
-        app:layout_constraintTop_toTopOf="@id/play_pause_container" />
-
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/exo_position"
         android:layout_width="wrap_content"
@@ -119,7 +49,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="4dp"
-        app:layout_constraintBottom_toTopOf="@id/controls_barrier"
+        app:layout_constraintBottom_toTopOf="@id/bottom_bar"
         app:layout_constraintEnd_toStartOf="@id/exo_duration"
         app:layout_constraintStart_toEndOf="@id/exo_position">
 
@@ -161,28 +91,73 @@
         app:layout_constraintTop_toTopOf="@id/seek_bar_container"
         tools:text="0:49:04" />
 
-    <androidx.constraintlayout.widget.Barrier
-        android:id="@+id/controls_barrier"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:barrierDirection="top"
-        app:constraint_referenced_ids="lock_screen_button,more_button,speed_button,fullscreen_switcher,rewind_button,fast_forward_button" />
-
-    <LinearLayout
-        android:id="@+id/extra_controls_container"
-        android:layout_width="wrap_content"
+    <!--
+        Extra controls panel, opened by the "more" button. It holds the buttons that are
+        not needed for normal playback: screen lock, audio, subtitles, quality, decoder,
+        playback info and chapter skipping.
+    -->
+    <!--
+        The panel is horizontally scrollable so its buttons can never be cut off on a
+        narrow screen. Only the inner row carries the background and visibility, so hiding
+        it collapses the scroll view to zero height.
+    -->
+    <HorizontalScrollView
+        android:id="@+id/extra_controls_scroll"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/exo_bottom_controls_margin"
+        android:layout_marginEnd="@dimen/exo_bottom_controls_margin"
         android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/playback_info_background"
-        android:elevation="8dp"
-        android:orientation="horizontal"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:visibility="gone"
+        android:scrollbars="none"
         app:layout_constraintBottom_toTopOf="@id/seek_bar_container"
-        app:layout_constraintStart_toStartOf="parent"
-        tools:visibility="visible">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:id="@+id/extra_controls_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/playback_info_background"
+            android:elevation="8dp"
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/lock_screen_button"
+            android:layout_width="@dimen/exo_bottom_controls_size"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_screen_lock_white_24dp" />
+
+        <!--
+            Chapter skipping. Shown only for items that actually have chapters; they sit
+            in the panel because the bottom bar is full with the normal playback buttons.
+        -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/previous_chapter_button"
+            android:layout_width="@dimen/exo_bottom_controls_size"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_skip_previous_chapter_black_32dp"
+            android:tint="?android:textColorPrimary"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/next_chapter_button"
+            android:layout_width="@dimen/exo_bottom_controls_size"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_skip_next_chapter_black_32dp"
+            android:tint="?android:textColorPrimary"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
         <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/audio_streams_button"
@@ -223,77 +198,106 @@
             android:background="@drawable/ripple_background_circular"
             android:padding="@dimen/exo_bottom_controls_padding"
             android:src="@drawable/ic_info_white_24dp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!--
+        Bottom control bar. A single weighted row so the buttons always fit the screen
+        width, in left-to-right order:
+        more, speed, previous, next, rewind, play/pause, fast-forward, fullscreen.
+        The chapter buttons are intentionally not here; see the panel above.
+    -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/exo_bottom_controls_margin"
+        android:paddingEnd="@dimen/exo_bottom_controls_margin"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintWidth_max="600dp">
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/more_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_more_vert_white_24dp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/speed_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_slow_motion_video_white_24dp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/previous_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_skip_previous_white_24dp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/next_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_skip_next_white_24dp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/rewind_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_rewind_white_24dp" />
+
+        <!--
+            Play/pause is located by media3 through findViewById(R.id.exo_play_pause)
+            only, so it can live directly in this row without a wrapper container.
+        -->
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/exo_play_pause"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:scaleType="centerInside"
+            android:tint="?android:textColorPrimary" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/fast_forward_button"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_fast_forward_white_24dp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/fullscreen_switcher"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/exo_bottom_controls_size"
+            android:layout_weight="1"
+            android:background="@drawable/ripple_background_circular"
+            android:padding="@dimen/exo_bottom_controls_padding"
+            android:src="@drawable/ic_fullscreen_enter_white_32dp" />
     </LinearLayout>
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/lock_screen_button"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginStart="@dimen/exo_bottom_controls_margin"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_screen_lock_white_24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/more_button"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_more_vert_white_24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/lock_screen_button" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/speed_button"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_slow_motion_video_white_24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/more_button" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/rewind_button"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginEnd="@dimen/exo_seek_controls_gap"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_rewind_white_24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/fast_forward_button" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/fast_forward_button"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginEnd="@dimen/exo_seek_controls_gap"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_fast_forward_white_24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/fullscreen_switcher" />
-
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/fullscreen_switcher"
-        android:layout_width="@dimen/exo_bottom_controls_size"
-        android:layout_height="@dimen/exo_bottom_controls_size"
-        android:layout_marginEnd="@dimen/exo_bottom_controls_margin"
-        android:layout_marginBottom="@dimen/exo_bottom_controls_margin"
-        android:background="@drawable/ripple_background_circular"
-        android:padding="@dimen/exo_bottom_controls_padding"
-        android:src="@drawable/ic_fullscreen_enter_white_32dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
     <FrameLayout
         android:id="@+id/trickplay_container"

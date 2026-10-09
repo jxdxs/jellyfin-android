@@ -230,12 +230,6 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
         // Manually switch between portrait and landscape
         rotateButton.setOnClickListener { toggleOrientation() }
 
-        // Hide the seek buttons when the bottom control bar is too narrow to fit them,
-        // otherwise they would overlap the buttons on the left
-        playerControlsView.addOnLayoutChangeListener { _, left, _, right, _, _, _, _, _ ->
-            updateSeekButtonsVisibility(right - left)
-        }
-
         // Keep the control bar visible while the user is interacting with it
         setupAutoHideRearm(playerControlsView)
 
@@ -377,32 +371,6 @@ class PlayerFragment : Fragment(), BackPressInterceptor {
         extraControlsContainer.isVisible = !extraControlsContainer.isVisible
         // Keep the controls on screen while the panel is open
         rearmControllerAutoHide()
-    }
-
-    /**
-     * Show the rewind/fast-forward buttons only when the bottom control bar is wide enough
-     * to fit them next to the buttons on the left.
-     *
-     * The bottom bar holds the lock, "more" and speed buttons on the left plus the fullscreen
-     * switcher on the right, so the seek buttons fit on virtually every screen.
-     */
-    private fun updateSeekButtonsVisibility(availableWidth: Int) {
-        if (availableWidth <= 0) return
-
-        val buttonSize = resources.getDimension(R.dimen.exo_bottom_controls_size)
-        val margin = resources.getDimension(R.dimen.exo_bottom_controls_margin)
-        val gap = resources.getDimension(R.dimen.exo_seek_controls_gap)
-
-        // Left chain measured from the left edge: outer margin + lock + more + speed
-        val leftChainWidth = margin + 3 * buttonSize
-        // Right chain measured from the right edge:
-        // outer margin + fullscreen + gap + fast-forward + gap + rewind
-        val rightChainWidth = margin + buttonSize + gap + buttonSize + gap + buttonSize
-
-        // Require the two chains not to touch, keeping one extra margin as breathing room
-        val hasRoom = availableWidth >= leftChainWidth + rightChainWidth + margin
-        rewindButton.isVisible = hasRoom
-        fastForwardButton.isVisible = hasRoom
     }
 
     fun onRewind() = viewModel.rewind()

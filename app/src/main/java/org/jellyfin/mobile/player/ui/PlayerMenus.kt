@@ -14,7 +14,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.get
 import androidx.core.view.isVisible
 import androidx.core.view.size
-import androidx.core.view.updateLayoutParams
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.TimeBar
 import org.jellyfin.mobile.R
@@ -44,7 +43,6 @@ class PlayerMenus(
 
     private val context = playerBinding.root.context
     private val qualityOptionsProvider: QualityOptionsProvider by inject()
-    private val playPauseContainer: View by playerControlsBinding::playPauseContainer
     private val previousButton: View by playerControlsBinding::previousButton
     private val nextButton: View by playerControlsBinding::nextButton
     private val previousChapterButton: View by playerControlsBinding::previousChapterButton
@@ -222,18 +220,15 @@ class PlayerMenus(
         ).joinToString("\n\n")
     }
 
+    /**
+     * Show or hide the chapter skip buttons.
+     *
+     * They live in the extra controls panel rather than the bottom bar, so unlike before
+     * there are no layout constraints to rewrite here - only the visibility changes.
+     */
     private fun updateLayoutConstraints(hasChapters: Boolean) {
-        if (hasChapters) {
-            previousButton.updateLayoutParams<ConstraintLayout.LayoutParams> { endToStart = previousChapterButton.id }
-            nextButton.updateLayoutParams<ConstraintLayout.LayoutParams> { startToEnd = nextChapterButton.id }
-            previousChapterButton.isVisible = true
-            nextChapterButton.isVisible = true
-        } else {
-            previousButton.updateLayoutParams<ConstraintLayout.LayoutParams> { endToStart = playPauseContainer.id }
-            nextButton.updateLayoutParams<ConstraintLayout.LayoutParams> { startToEnd = playPauseContainer.id }
-            previousChapterButton.isVisible = false
-            nextChapterButton.isVisible = false
-        }
+        previousChapterButton.isVisible = hasChapters
+        nextChapterButton.isVisible = hasChapters
     }
 
     private fun setChapterMarkings(chapters: List<ChapterInfo>?, runTimeTicks: Long?) {
