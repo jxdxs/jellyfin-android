@@ -3,7 +3,9 @@ name: Personal Build
 # Builds a signed APK of this customized fork.
 #
 # Trigger manually from the Actions tab, or automatically on every push to the
-# personal-build branch. The resulting APKs are uploaded as workflow artifacts.
+# personal-build branch. Each build publishes a NEW release whose patch version
+# is incremented automatically, so past releases are kept and can be downloaded
+# again at any time.
 #
 # Signing is done explicitly with apksigner instead of through Gradle's
 # signingConfig: Gradle's packageRelease task hung on CI (it never completed,
@@ -13,15 +15,20 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version name for the built APK (e.g. 2.7.3-personal)"
+        description: "Explicit version (e.g. 3.0.0-personal). Leave empty to auto-increment the patch (2.7.3 -> 2.7.4)."
         required: false
-        default: "2.7.3-personal"
+        default: ""
   push:
     branches:
       - personal-build
 
 permissions:
   contents: write
+
+# Never let two builds race while computing the next version number
+concurrency:
+  group: personal-build
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -32,6 +39,45 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Work out the version for this build.
+      #   - Manual input wins (use this for a major/minor bump, e.g. 3.0.0-personal)
+      #   - Otherwise take the highest existing *-personal tag and bump the patch
+      - name: Determine version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          SEED="2.7.3"   # used only when no *-personal tag exists yet
+
+          if [ -n "${MANUAL_VERSION:-}" ]; then
+            VERSION="${MANUAL_VERSION#v}"          # tolerate a leading "v"
+            echo "Using manually specified version: $VERSION"
+          else
+            LAST=$(gh api --paginate "repos/$REPO/tags?per_page=100" --jq '.[].name' 2>/dev/null \
+              | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+-personal$' \
+              | sed -E 's/^v//; s/-personal$//' \
+              | sort -t. -k1,1n -k2,2n -k3,3n \
+              | tail -1 || true)
+
+            if [ -z "$LAST" ]; then
+              VERSION="${SEED}-personal"
+              echo "No previous *-personal tag found, starting from $VERSION"
+            else
+              MAJOR=$(echo "$LAST" | cut -d. -f1)
+              MINOR=$(echo "$LAST" | cut -d. -f2)
+              PATCH=$(echo "$LAST" | cut -d. -f3)
+              VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-personal"
+              echo "Previous version $LAST -> next $VERSION"
+            fi
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"   >> "$GITHUB_OUTPUT"
+          echo "### Version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -47,7 +93,7 @@ jobs:
       - name: Build release APK (unsigned)
         timeout-minutes: 30
         env:
-          JELLYFIN_VERSION: ${{ github.event.inputs.version || '2.7.3-personal' }}
+          JELLYFIN_VERSION: ${{ steps.version.outputs.version }}
         run: |
           ./gradlew :app:assembleLibreRelease --no-daemon --console=plain \
             -Dorg.gradle.jvmargs="-Xmx3072m -Djava.security.egd=file:/dev/urandom"
@@ -55,7 +101,7 @@ jobs:
       - name: Build debug APK
         timeout-minutes: 15
         env:
-          JELLYFIN_VERSION: ${{ github.event.inputs.version || '2.7.3-personal' }}
+          JELLYFIN_VERSION: ${{ steps.version.outputs.version }}
         run: |
           ./gradlew :app:assembleLibreDebug --no-daemon --console=plain \
             -Dorg.gradle.jvmargs="-Xmx3072m -Djava.security.egd=file:/dev/urandom"
@@ -126,19 +172,22 @@ jobs:
           if-no-files-found: warn
           path: build/personal-output/*.apk
 
-      # Release: appears on the repository's Releases page for easy download.
+      # Release: one per build, kept forever. The tag is never reused, so
+      # previously published releases stay downloadable.
       - name: Publish release
         if: success()
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ github.event.inputs.version || '2.7.3-personal' }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          TAG="v${VERSION}"
           REPO="${{ github.repository }}"
 
-          # Recreate on every run so the same version can be rebuilt
-          gh release delete "$TAG" --repo "$REPO" --yes --cleanup-tag 2>/dev/null || true
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Re-run with an explicit higher version."
+            exit 1
+          fi
 
           gh release create "$TAG" \
             --repo "$REPO" \
@@ -153,16 +202,19 @@ jobs:
           ## 改动内容
           - 连接：接受版本较旧/被改名的服务器（如飞牛 NAS 的 Jellyfin 10.8.12）
           - 播放：声明 mov 容器并显式指定 MIME 类型，修复 .mov 黑屏
-          - 界面：快进/快退按钮（可设 5/10/20/30 秒），次要按钮收进\"更多\"面板
+          - 界面：快进/快退按钮（可设 5/10/20/30 秒），倍速支持 3x/4x/5x
+          - 界面：底栏含锁屏/更多/倍速，次要按钮收进\"更多\"面板
           - 界面：工具栏手动旋转按钮；控制栏操作时不再自动消失
 
           ## 安装
-          与本地构建使用同一签名，可直接覆盖安装。
-          SHA-256: \`53b3f5149855e25da144153345b66835f0889562553c81adbaeeb354233862b8\`
+          与历史版本使用同一签名，可直接覆盖安装。
+          签名 SHA-256: \`53b3f5149855e25da144153345b66835f0889562553c81adbaeeb354233862b8\`
 
-          > 构建自 ${REPO} 的 \`personal-build\` 分支" \
+          > 构建自 ${REPO} 的 \`personal-build\` 分支（commit ${GITHUB_SHA:0:7}）" \
             build/personal-output/*.apk build/personal-output/SHA256SUMS.txt
 
           echo "Release published:"
           gh release view "$TAG" --repo "$REPO" --json url,assets \
             --jq '.url, (.assets[] | "  \(.name)  \(.size) bytes")'
+
+          echo "### Release: ${VERSION}" >> "$GITHUB_STEP_SUMMARY"
