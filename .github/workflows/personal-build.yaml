@@ -3,9 +3,16 @@ name: Personal Build
 # Builds a signed APK of this customized fork.
 #
 # Trigger manually from the Actions tab, or automatically on every push to the
-# personal-build branch. Each build publishes a NEW release whose patch version
-# is incremented automatically, so past releases are kept and can be downloaded
-# again at any time.
+# personal-build branch.
+#
+# Versioning: the fork tracks the upstream release it is based on, with a
+# revision suffix that restarts for each upstream version:
+#
+#   upstream 2.7.3 -> 2.7.3-0.1, 2.7.3-0.2, ...
+#   upstream 2.8.0 -> 2.8.0-0.1, 2.8.0-0.2, ...
+#
+# Each build publishes a new release under its own tag, so past builds stay
+# downloadable.
 #
 # Signing is done explicitly with apksigner instead of through Gradle's
 # signingConfig: Gradle's packageRelease task hung on CI (it never completed,
@@ -15,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Explicit version (e.g. 3.0.0-personal). Leave empty to auto-increment the patch (2.7.3 -> 2.7.4)."
+        description: "Explicit version (e.g. 2.7.3-0.5). Leave empty to auto-increment the revision."
         required: false
         default: ""
   push:
@@ -37,12 +44,17 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      # Tags are needed to find which upstream release this fork is based on, and
+      # to list the revisions already published for it.
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       # Work out the version for this build.
-      #   - Manual input wins (use this for a major/minor bump, e.g. 3.0.0-personal)
-      #   - Otherwise take the highest existing *-personal tag and bump the patch
+      #   - Manual input wins (use this to pin or restart a revision, e.g. 2.8.0-0.1)
+      #   - Otherwise: find the upstream base tag and bump the revision (2.7.3-0.1 -> 2.7.3-0.2)
       - name: Determine version
         id: version
         env:
@@ -51,28 +63,40 @@ jobs:
         run: |
           set -euo pipefail
           REPO="${{ github.repository }}"
-          SEED="2.7.3"   # used only when no *-personal tag exists yet
 
           if [ -n "${MANUAL_VERSION:-}" ]; then
             VERSION="${MANUAL_VERSION#v}"          # tolerate a leading "v"
             echo "Using manually specified version: $VERSION"
           else
-            LAST=$(gh api --paginate "repos/$REPO/tags?per_page=100" --jq '.[].name' 2>/dev/null \
-              | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+-personal$' \
-              | sed -E 's/^v//; s/-personal$//' \
-              | sort -t. -k1,1n -k2,2n -k3,3n \
-              | tail -1 || true)
-
-            if [ -z "$LAST" ]; then
-              VERSION="${SEED}-personal"
-              echo "No previous *-personal tag found, starting from $VERSION"
-            else
-              MAJOR=$(echo "$LAST" | cut -d. -f1)
-              MINOR=$(echo "$LAST" | cut -d. -f2)
-              PATCH=$(echo "$LAST" | cut -d. -f3)
-              VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))-personal"
-              echo "Previous version $LAST -> next $VERSION"
+            # Upstream base version: the newest plain "vX.Y.Z" tag reachable from HEAD.
+            # Tags carrying a suffix (v2.7.3-0.1) are excluded so a build tag can never
+            # be mistaken for the base.
+            BASE=$(git describe --tags --abbrev=0 \
+              --match 'v[0-9]*.[0-9]*.[0-9]*' --exclude '*-*' 2>/dev/null || true)
+            if [ -z "$BASE" ]; then
+              echo "::error::Could not determine the upstream base version (no vX.Y.Z tag found). Use the manual version input."
+              exit 1
             fi
+            BASE="${BASE#v}"
+            echo "Upstream base version: $BASE"
+
+            # Highest revision already published for this base, e.g. tags v2.7.3-0.3
+            # Matching-refs avoids paging through every tag in the repository.
+            LAST=$(gh api "repos/$REPO/git/matching-refs/tags/v${BASE}-0." \
+              --jq '.[].ref' 2>/dev/null \
+              | sed -nE 's#^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+-0\.([0-9]+)$#\1#p' \
+              | sort -n | tail -1 || true)
+
+            REVISION=$(( ${LAST:-0} + 1 ))
+            # The revision is folded into the version code as base*100+N, so it must
+            # stay within two digits.
+            if [ "$REVISION" -gt 99 ]; then
+              echo "::error::Revision $REVISION for $BASE exceeds 99. Bump the upstream base instead."
+              exit 1
+            fi
+
+            VERSION="${BASE}-0.${REVISION}"
+            echo "Previous revision: ${LAST:-none} -> next $VERSION"
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -199,12 +223,18 @@ jobs:
           - \`jellyfin-android-*-libre-debug.apk\` —— debug 版，带日志（33 MB）
           - \`SHA256SUMS.txt\` —— 校验值
 
+          ## 版本号规则
+          官方版本 + 修订号，如 \`2.7.3-0.1\`＝基于官方 v2.7.3 的第 1 次修改。
+          官方升级后（如 v2.8.0），修订号从 \`2.8.0-0.1\` 重新开始。
+
           ## 改动内容
           - 连接：接受版本较旧/被改名的服务器（如飞牛 NAS 的 Jellyfin 10.8.12）
           - 播放：声明 mov 容器并显式指定 MIME 类型，修复 .mov 黑屏
-          - 界面：快进/快退按钮（可设 5/10/20/30 秒），倍速支持 3x/4x/5x
-          - 界面：底栏含锁屏/更多/倍速，次要按钮收进\"更多\"面板
-          - 界面：工具栏手动旋转按钮；控制栏操作时不再自动消失
+          - 底栏（权重均分，任何屏幕都放得下）：
+            弹出栏 · 倍速 · 上一个 · 下一个 · 快退 · 播放/暂停 · 快进 · 全屏
+          - 弹出栏：屏幕锁定 · 上一章 · 下一章 · 音轨 · 字幕 · 画质 · 解码器 · 播放信息
+          - 快进/快退秒数可设（5/10/20/30 秒）；倍速支持 3x/4x/5x
+          - 工具栏手动旋转按钮；控制栏操作时不再自动消失
 
           ## 安装
           与历史版本使用同一签名，可直接覆盖安装。

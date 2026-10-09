@@ -54,12 +54,30 @@ fun getVersionCode(versionName: String): Int {
         ?.substringAfter('.')
         ?.let(String::toIntOrNull)
 
-    // Build code
-    var code = 0
-    code += major * 1000000 // Major (0-99)
-    code += minor * 10000 // Minor (0-99)
-    code += patch * 100 // Patch (0-99)
-    code += buildVersion ?: 99 // Pre release (0-99)
+    // Personal builds are named "<official version>-0.<N>" (e.g. 2.7.3-0.1) and each
+    // official base restarts the counter at 1.
+    //
+    // The revision is placed in the free slot just above the base release rather than
+    // reusing the 0-99 pre-release slot: the official release already uses 99 there, so
+    // a personal build of the same version would otherwise get a *lower* version code
+    // than the official APK and Android would reject it as a downgrade.
+    //
+    //   官方 2.7.3      -> 2070399
+    //   2.7.3-0.1      -> 2070400   (installs over the official release)
+    //   2.7.3-0.99     -> 2070498
+    //   官方 2.7.4      -> 2070499   (still installs over any 2.7.3-0.N build)
+    //
+    // Revisions are capped at 99 so a personal build can never reach the next official
+    // patch release.
+    val isPersonalBuild = versionPreRelease?.startsWith("0.") == true
+    val baseCode = major * 1000000 + minor * 10000 + patch * 100 // Major (0-99) / Minor / Patch
 
-    return code
+    if (isPersonalBuild) {
+        val revision = buildVersion ?: 0
+        require(revision in 0..99) { "Personal build revision must be 0-99, got $revision in $versionName" }
+        return baseCode + 99 + revision
+    }
+
+    // Official releases keep their existing scheme
+    return baseCode + (buildVersion ?: 99) // Pre release (0-99)
 }
