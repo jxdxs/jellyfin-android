@@ -302,13 +302,14 @@ class PlayerMenus(
     }
 
     private fun createSpeedMenu() = PopupMenu(context, speedButton).apply {
-        for (step in SPEED_MENU_STEP_MIN..SPEED_MENU_STEP_MAX) {
-            val newSpeed = step * SPEED_MENU_STEP_SIZE
-            menu.add(SPEED_MENU_GROUP, step, Menu.NONE, "${newSpeed}x").isChecked = newSpeed == 1f
+        // Explicit list instead of a numeric range: the menu must not contain the
+        // values between 2x and 3x (2.25x, 2.5x, ...) that a plain range would add.
+        SPEED_MENU_SPEEDS.forEachIndexed { index, speed ->
+            menu.add(SPEED_MENU_GROUP, index, Menu.NONE, "${speed}x").isChecked = speed == 1f
         }
         menu.setGroupCheckable(SPEED_MENU_GROUP, true, true)
         setOnMenuItemClickListener { clickedItem: MenuItem ->
-            fragment.onSpeedSelected(clickedItem.itemId * SPEED_MENU_STEP_SIZE).also { success ->
+            fragment.onSpeedSelected(SPEED_MENU_SPEEDS[clickedItem.itemId]).also { success ->
                 if (success) clickedItem.isChecked = true
             }
         }
@@ -436,8 +437,13 @@ class PlayerMenus(
         private const val BITRATE_MEGA_BIT = 1_000_000
         private const val BITRATE_KILO_BIT = 1_000
 
-        private const val SPEED_MENU_STEP_SIZE = 0.25f
-        private const val SPEED_MENU_STEP_MIN = 2 // → 0.5x
-        private const val SPEED_MENU_STEP_MAX = 8 // → 2x
+        /**
+         * Playback speeds offered in the speed menu, in ascending order.
+         *
+         * Kept as an explicit list rather than a range so that 3x/4x/5x can be offered
+         * without also adding every intermediate value (2.25x, 2.75x, ...).
+         * ExoPlayer's PlaybackParameters has no upper bound, so 5x is handled natively.
+         */
+        private val SPEED_MENU_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 3f, 4f, 5f)
     }
 }
